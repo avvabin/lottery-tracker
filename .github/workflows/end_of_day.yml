@@ -2,7 +2,7 @@ name: Итог дня 7 из 42
 
 on:
   schedule:
-    - cron: "55 18 * * *"   # 23:55 по Астане (GMT+5) = 18:55 UTC
+    - cron: "55 18 * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -29,4 +29,6 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_USERNAME: ${{ github.repository_owner }}
         run: python end_of_day.py
