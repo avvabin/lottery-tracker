@@ -50,36 +50,40 @@ def save_offset(update_id):
 
 
 def build_stats_reply() -> str:
-    """Только факты по четвёркам: полный пересчёт с начала дня на этот момент."""
+    """Только факты по четвёркам: полный пересчёт с начала дня (по Астане) на этот момент."""
     if not os.path.exists(DATA_FILE):
         return "Данных пока нет - бот ещё не собрал ни одного тиража."
 
+    from datetime import datetime, timedelta
+    ASTANA_OFFSET = timedelta(hours=5)
+    today = (datetime.utcnow() + ASTANA_OFFSET).date().isoformat()
+
     df = pd.read_csv(DATA_FILE, sep=';', encoding='utf-8-sig')
     normal = df[df['Выпавшие шары'] != 'ОТМЕНЕН'].copy()
+    normal['dt_astana'] = pd.to_datetime(normal['Дата и Время']) + ASTANA_OFFSET
+    normal['date_astana'] = normal['dt_astana'].dt.date.astype(str)
 
-    today = date.today().isoformat()
-    today_df = normal[normal['Дата'] == today].copy()
+    today_df = normal[normal['date_astana'] == today].copy()
 
     if today_df.empty:
-        return f"За сегодня ({today}) в базе пока нет данных."
+        return f"За сегодня ({today}, по Астане) в базе пока нет данных."
 
     today_df['balls_list'] = today_df['Выпавшие шары'].apply(lambda s: [int(x.strip()) for x in s.split(',')])
-    today_df['dt'] = pd.to_datetime(today_df['Дата и Время'])
-    today_df = today_df.sort_values('dt')
+    today_df = today_df.sort_values('dt_astana')
 
     combo4_times = defaultdict(list)
     for _, row in today_df.iterrows():
         for c in combinations(sorted(row['balls_list']), 4):
-            combo4_times[c].append(row['dt'])
+            combo4_times[c].append(row['dt_astana'])
 
     repeated4 = [(c, times) for c, times in combo4_times.items() if len(times) >= 4]
     repeated4.sort(key=lambda x: -len(x[1]))
 
     lines = [
-        f"Статистика по четвёркам за {today}",
+        f"Статистика по четвёркам за {today} (по Астане, GMT+5)",
         f"Тиражей с начала дня: {len(today_df)}",
         "",
-        "Это ПОЛНЫЙ пересчёт с полуночи на текущий момент",
+        "Это ПОЛНЫЙ пересчёт с полуночи (по Астане) на текущий момент",
         "(не новое событие, а сумма всех повторов с начала дня).",
         "",
         f"Четвёрок с 4+ повторами: {len(repeated4)}",
@@ -96,7 +100,6 @@ def build_stats_reply() -> str:
         lines.append("  таких пока нет")
 
     return "\n".join(lines)
-
 
 def main():
     offset = load_offset()
