@@ -240,9 +240,6 @@ def build_today_summary(combined):
     if len(repeated4) > 15:
         lines.append(f"  ...ещё {len(repeated4)-15}, полный список — в итоге дня")
 
-    lines.append("")
-    lines.append("(Напоминание: по анализу 89 дней это фоновый шум, не сигнал.)")
-
     return "\n".join(lines)
 
 def main():
