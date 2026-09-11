@@ -14,6 +14,35 @@ import requests
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 DATA_FILE = "history_backfill.csv"
+GH_PAT = os.environ.get("GH_PAT", "")
+GH_USERNAME = os.environ.get("GH_USERNAME", "")
+
+
+def check_actions_minutes() -> str:
+    """Проверяет израсходованные минуты GitHub Actions за месяц."""
+    if not GH_PAT or not GH_USERNAME:
+        return ""
+    try:
+        url = f"https://api.github.com/users/{GH_USERNAME}/settings/billing/actions"
+        headers = {"Authorization": f"token {GH_PAT}", "Accept": "application/vnd.github+json"}
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return f"(Не удалось проверить минуты Actions: {resp.status_code})"
+        data = resp.json()
+        used = data.get("total_minutes_used", 0)
+        included = data.get("included_minutes", 2000)
+        pct = (used / included * 100) if included else 0
+
+        line = f"\nМинуты GitHub Actions в этом месяце: {used}/{included} ({pct:.0f}%)"
+        if pct >= 90:
+            line += "\n\U0001F534 ВНИМАНИЕ: минуты почти закончились! Бот скоро может остановиться."
+        elif pct >= 70:
+            line += "\n\U0001F7E1 Минут остаётся немного, стоит последить."
+        return line
+    except Exception as e:
+        return f"(Ошибка проверки минут: {e})"
+
+
 
 
 def send_telegram(text: str):
@@ -64,6 +93,8 @@ def build_end_of_day_summary() -> str:
         gaps = [f"{int((times[i]-times[i-1]).total_seconds()/60)}м" for i in range(1, len(times))]
         gaps_str = " -> ".join(gaps) if gaps else "-"
         lines.append(f"  {combo}: {len(times)}x [{times_str}] интервалы: {gaps_str}")
+
+    lines.append(check_actions_minutes())
 
     lines.append("")
     lines.append("(Напоминание: это фоновый шум по 89-дневному анализу, не сигнал.)")
