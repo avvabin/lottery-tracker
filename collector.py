@@ -174,34 +174,38 @@ def send_telegram(text: str):
 
 def build_today_summary(combined):
     from itertools import combinations
-    from collections import Counter, defaultdict
-    from datetime import date
+    from collections import defaultdict
+    from datetime import datetime, timedelta
     import pandas as pd
 
-    today = date.today().isoformat()
+    ASTANA_OFFSET = timedelta(hours=5)
+    today = (datetime.utcnow() + ASTANA_OFFSET).date().isoformat()
+
     normal = combined[combined['Выпавшие шары'] != 'ОТМЕНЕН'].copy()
-    today_df = normal[normal['Дата'] == today].copy()
+    normal['dt_astana'] = pd.to_datetime(normal['Дата и Время']) + ASTANA_OFFSET
+    normal['date_astana'] = normal['dt_astana'].dt.date.astype(str)
+
+    today_df = normal[normal['date_astana'] == today].copy()
 
     if today_df.empty:
-        return f"7 из 42 — {today}\nЗа сегодня пока нет данных."
+        return f"7 из 42 — {today} (по Астане)\nЗа сегодня пока нет данных."
 
     today_df['balls_list'] = today_df['Выпавшие шары'].apply(lambda s: [int(x.strip()) for x in s.split(',')])
-    today_df['dt'] = pd.to_datetime(today_df['Дата и Время'])
-    today_df = today_df.sort_values('dt')
+    today_df = today_df.sort_values('dt_astana')
 
     combo4_times = defaultdict(list)
     for _, row in today_df.iterrows():
         for c in combinations(sorted(row['balls_list']), 4):
-            combo4_times[c].append(row['dt'])
+            combo4_times[c].append(row['dt_astana'])
 
     repeated4 = [(c, times) for c, times in combo4_times.items() if len(times) >= 4]
     repeated4.sort(key=lambda x: -len(x[1]))
 
     lines = [
-        f"7 из 42 — сводка за {today}",
+        f"7 из 42 — сводка за {today} (по Астане, GMT+5)",
         f"Тиражей с начала дня: {len(today_df)}",
         "",
-        "Это ПОЛНЫЙ пересчёт с полуночи на текущий момент",
+        "Это ПОЛНЫЙ пересчёт с полуночи (по Астане) на текущий момент",
         "(не новые события, а сумма всех повторов с начала дня).",
         "",
         f"Четвёрок чисел с 4+ повторами: {len(repeated4)}",
@@ -249,7 +253,7 @@ def main():
 
     # Короткий отчёт "что было сегодня" - и в лог, и в Telegram
     today = date.today().isoformat()
-    today_rows = combined[combined["Дата"] == today]
+    today_rows = combined[combined["Дата"] == today]  # для лога, приблизительно
     log.info("=== Сводка за сегодня (%s): %d тиражей в архиве ===", today, len(today_rows))
 
     summary_text = build_today_summary(combined)
