@@ -157,6 +157,24 @@ def save_progress(df: pd.DataFrame):
     log.info("Сохранено %d уникальных тиражей в %s", len(df), OUTPUT_FILE)
 
 
+FAIL_COUNT_FILE = "fail_count.txt"
+
+
+def load_fail_count():
+    if os.path.exists(FAIL_COUNT_FILE):
+        try:
+            with open(FAIL_COUNT_FILE) as f:
+                return int(f.read().strip())
+        except Exception:
+            return 0
+    return 0
+
+
+def save_fail_count(n):
+    with open(FAIL_COUNT_FILE, "w") as f:
+        f.write(str(n))
+
+
 def send_telegram(text: str):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         log.warning("Telegram токен/chat_id не заданы - уведомление не отправлено.")
@@ -240,9 +258,21 @@ def main():
     finally:
         driver.quit()
 
+    fail_count = load_fail_count()
+
     if not raw:
-        log.warning("Пусто за этот прогон - возможно сайт не отдал данные.")
+        fail_count += 1
+        save_fail_count(fail_count)
+        log.warning("Пусто за этот прогон (%d подряд) - возможно сайт не отдал данные.", fail_count)
+        if fail_count >= 3:
+            send_telegram(
+                f"\u26a0\ufe0f Бот не может собрать данные уже {fail_count} раза(ов) подряд.\n"
+                "Возможно, сайт изменился или недоступен - стоит проверить вручную."
+            )
+            save_fail_count(0)
         return
+
+    save_fail_count(0)
 
     records = enrich_records(raw)
     new_df = pd.DataFrame(records)
@@ -251,7 +281,6 @@ def main():
     combined = pd.concat([old_df, new_df], ignore_index=True) if not old_df.empty else new_df
     save_progress(combined)
 
-    # Короткий отчёт "что было сегодня" - и в лог, и в Telegram
     today = date.today().isoformat()
     today_rows = combined[combined["Дата"] == today]  # для лога, приблизительно
     log.info("=== Сводка за сегодня (%s): %d тиражей в архиве ===", today, len(today_rows))
