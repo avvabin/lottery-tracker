@@ -172,50 +172,56 @@ def send_telegram(text: str):
         log.error("Не удалось отправить в Telegram: %s", e)
 
 
-def build_today_summary(combined: pd.DataFrame) -> str:
+def build_today_summary(combined):
     from itertools import combinations
-    from collections import Counter
+    from collections import Counter, defaultdict
+    from datetime import date
+    import pandas as pd
 
     today = date.today().isoformat()
     normal = combined[combined['Выпавшие шары'] != 'ОТМЕНЕН'].copy()
-    today_df = normal[normal['Дата'] == today]
+    today_df = normal[normal['Дата'] == today].copy()
 
     if today_df.empty:
         return f"7 из 42 — {today}\nЗа сегодня пока нет данных."
 
     today_df['balls_list'] = today_df['Выпавшие шары'].apply(lambda s: [int(x.strip()) for x in s.split(',')])
-    freq = Counter()
-    for balls in today_df['balls_list']:
-        freq.update(balls)
-    expected = len(today_df) * 7 / 42
-    top3 = freq.most_common(3)
+    today_df['dt'] = pd.to_datetime(today_df['Дата и Время'])
+    today_df = today_df.sort_values('dt')
 
-    combo4 = Counter()
-    for balls in today_df['balls_list']:
-        for c in combinations(sorted(balls), 4):
-            combo4[c] += 1
-    repeated4 = [(c, cnt) for c, cnt in combo4.items() if cnt >= 2]
-    repeated4.sort(key=lambda x: -x[1])
+    combo4_times = defaultdict(list)
+    for _, row in today_df.iterrows():
+        for c in combinations(sorted(row['balls_list']), 4):
+            combo4_times[c].append(row['dt'])
+
+    repeated4 = [(c, times) for c, times in combo4_times.items() if len(times) >= 4]
+    repeated4.sort(key=lambda x: -len(x[1]))
 
     lines = [
         f"7 из 42 — сводка за {today}",
-        f"Тиражей сегодня: {len(today_df)}",
+        f"Тиражей с начала дня: {len(today_df)}",
         "",
-        "Топ-3 числа сегодня:",
+        "Это ПОЛНЫЙ пересчёт с полуночи на текущий момент",
+        "(не новые события, а сумма всех повторов с начала дня).",
+        "",
+        f"Четвёрок чисел с 4+ повторами: {len(repeated4)}",
     ]
-    for num, cnt in top3:
-        lines.append(f"  {num}: {cnt} раз (ожид. ~{expected:.1f})")
+    for combo, times in repeated4[:15]:
+        times_str = ", ".join(t.strftime("%H:%M") for t in times)
+        gaps = []
+        for i in range(1, len(times)):
+            delta_min = int((times[i] - times[i-1]).total_seconds() / 60)
+            gaps.append(f"{delta_min}м")
+        gaps_str = " -> ".join(gaps) if gaps else "-"
+        lines.append(f"  {combo}: {len(times)}x [{times_str}] интервалы: {gaps_str}")
 
-    lines.append("")
-    lines.append(f"Четвёрок с 2+ повторами сегодня: {len(repeated4)}")
-    for combo, cnt in repeated4[:3]:
-        lines.append(f"  {combo}: {cnt} раз")
+    if len(repeated4) > 15:
+        lines.append(f"  ...ещё {len(repeated4)-15}, полный список — в итоге дня")
 
     lines.append("")
     lines.append("(Напоминание: по анализу 89 дней это фоновый шум, не сигнал.)")
 
     return "\n".join(lines)
-
 
 def main():
     log.info("=== Автосбор: снимаем текущее окно результатов ===")
