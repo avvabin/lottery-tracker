@@ -1,0 +1,32 @@
+name: Итог дня 7 из 42
+
+on:
+  schedule:
+    - cron: "55 18 * * *"   # 23:55 по Астане (GMT+5) = 18:55 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  end_of_day:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Установка зависимостей
+        run: pip install pandas requests
+
+      - name: Отправка итога дня
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python end_of_day.py
