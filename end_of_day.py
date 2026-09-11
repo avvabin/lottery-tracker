@@ -96,9 +96,6 @@ def build_end_of_day_summary() -> str:
 
     lines.append(check_actions_minutes())
 
-    lines.append("")
-    lines.append("(Напоминание: это фоновый шум по 89-дневному анализу, не сигнал.)")
-
     return "\n".join(lines)
 
 if __name__ == "__main__":
