@@ -496,3 +496,20 @@ if __name__ == "__main__":
 2026-09-12 19:11:42,792 [INFO] Сохранено 36382 уникальных тиражей в history_backfill.csv
 2026-09-12 19:11:42,795 [INFO] === Сводка за сегодня (2026-09-12): 228 тиражей в архиве ===
 2026-09-12 19:11:43,216 [INFO] Уведомление отправлено в Telegram.
+2026-09-12 20:13:23,611 [INFO] === Автосбор: снимаем текущее окно результатов ===
+2026-09-12 20:13:23,708 [INFO] ====== WebDriver manager ======
+2026-09-12 20:13:23,906 [INFO] Get LATEST chromedriver version for google-chrome
+2026-09-12 20:13:23,951 [INFO] There is no [linux64] chromedriver "152.0.7977.82" for browser google-chrome "152.0.7977" in cache
+2026-09-12 20:13:23,983 [INFO] There is no [linux64] chromedriver "152.0.7977.82" for browser google-chrome "152.0.7977" in cache
+2026-09-12 20:13:23,984 [INFO] Get LATEST chromedriver version for google-chrome
+2026-09-12 20:13:24,119 [INFO] WebDriver version 152.0.7977.82 selected
+2026-09-12 20:13:24,126 [INFO] Modern chrome version https://storage.googleapis.com/chrome-for-testing-public/152.0.7977.82/linux64/chromedriver-linux64.zip
+2026-09-12 20:13:24,126 [INFO] About to download new driver from https://storage.googleapis.com/chrome-for-testing-public/152.0.7977.82/linux64/chromedriver-linux64.zip
+2026-09-12 20:13:24,187 [INFO] Driver downloading response is 200
+2026-09-12 20:13:24,376 [INFO] Driver has been saved in cache [/home/runner/.wdm/drivers/chromedriver/linux64/152.0.7977.82]
+2026-09-12 20:13:28,864 [INFO] Страница загружена, ждём...
+2026-09-12 20:13:46,957 [INFO] Панель 'Результаты' открыта.
+2026-09-12 20:13:46,969 [INFO] Снято тиражей за этот запуск: 30
+2026-09-12 20:13:47,219 [INFO] Сохранено 36399 уникальных тиражей в history_backfill.csv
+2026-09-12 20:13:47,222 [INFO] === Сводка за сегодня (2026-09-12): 243 тиражей в архиве ===
+2026-09-12 20:13:47,581 [INFO] Уведомление отправлено в Telegram.
