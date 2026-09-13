@@ -146,6 +146,10 @@ def load_existing():
 COLUMN_ORDER = ["Тираж", "Дата", "День недели", "Дата и Время", "Выпавшие шары", "Жёлтых", "Чёрных"]
 
 
+LATEST_FILE = "latest.csv"
+LATEST_ROWS = 1000  # сколько последних тиражей держать в лёгком файле
+
+
 def save_progress(df: pd.DataFrame):
     if df.empty:
         return
@@ -155,6 +159,13 @@ def save_progress(df: pd.DataFrame):
     df = df[existing_cols + other_cols]
     df.to_csv(OUTPUT_FILE, index=False, encoding="utf-8-sig", sep=";")
     log.info("Сохранено %d уникальных тиражей в %s", len(df), OUTPUT_FILE)
+
+    # Лёгкий файл с последними N тиражами - маленький, чтобы Claude мог
+    # стабильно скачивать его целиком по прямой ссылке (основной файл
+    # слишком большой и не помещается целиком через веб-загрузку).
+    latest = df.tail(LATEST_ROWS)
+    latest.to_csv(LATEST_FILE, index=False, encoding="utf-8-sig", sep=";")
+    log.info("Сохранено %d последних тиражей в %s", len(latest), LATEST_FILE)
 
 
 FAIL_COUNT_FILE = "fail_count.txt"
@@ -229,7 +240,7 @@ def build_today_summary(combined):
         f"Четвёрок чисел с 4+ повторами: {len(repeated4)}",
     ]
     for combo, times in repeated4[:15]:
-        times_str = ", ".join(t.strftime("%H:%M") for t in times)
+        times_str = ", ".join(t.strftime("%H:%M:%S") for t in times)
         gaps = []
         for i in range(1, len(times)):
             delta_min = int((times[i] - times[i-1]).total_seconds() / 60)
@@ -282,8 +293,14 @@ def main():
     today_rows = combined[combined["Дата"] == today]  # для лога, приблизительно
     log.info("=== Сводка за сегодня (%s): %d тиражей в архиве ===", today, len(today_rows))
 
-    summary_text = build_today_summary(combined)
-    send_telegram(summary_text)
+    # Данные УЖЕ сохранены выше (save_progress) - что бы ни случилось дальше,
+    # это не должно помешать коммиту. Поэтому сводку строим и шлём отдельно,
+    # с защитой от падения.
+    try:
+        summary_text = build_today_summary(combined)
+        send_telegram(summary_text)
+    except Exception as e:
+        log.error("Ошибка при построении/отправке сводки (данные уже сохранены): %s", e)
 
 
 if __name__ == "__main__":
