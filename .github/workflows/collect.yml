@@ -34,10 +34,23 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python collector.py
 
-      - name: Коммит обновлённого архива
+      - name: Коммит обновлённого архива (с защитой от гонки)
         run: |
           git config user.name "lottery-collector-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add history_backfill.csv collector.log fail_count.txt
-          git diff --staged --quiet || git commit -m "Автосбор: $(date -u +'%Y-%m-%d %H:%M UTC')"
-          git push
+          git add history_backfill.csv latest.csv collector.log fail_count.txt
+          if git diff --staged --quiet; then
+            echo "Нет изменений для коммита."
+            exit 0
+          fi
+          git commit -m "Автосбор: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          for i in 1 2 3 4 5; do
+            if git pull --rebase origin main && git push; then
+              echo "Push успешен (попытка $i)"
+              exit 0
+            fi
+            echo "Push не удался, повтор через паузу (попытка $i)..."
+            sleep $((RANDOM % 10 + 5))
+          done
+          echo "Не удалось запушить после 5 попыток"
+          exit 1
